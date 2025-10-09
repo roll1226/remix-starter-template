@@ -19,7 +19,7 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const { pathname } = new URL(request.url);
 
-		if (pathname === '/api/beverage') {
+		if (pathname === '/api/beverages') {
 			const { results } = await env.prod_d1_tutorial.prepare('SELECT * FROM Customers WHERE CompanyName = ?').bind('Bs Beverages').run();
 			return Response.json(results);
 		}
