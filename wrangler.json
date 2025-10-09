@@ -1,12 +1,19 @@
 {
-  "name": "remix-starter-template",
-  "compatibility_date": "2025-04-01",
-  "main": "./server.ts",
-  "assets": {
-    "directory": "./build/client"
-  },
-  "observability": {
-    "enabled": true
-  },
-  "upload_source_maps": true
+	"name": "remix-starter-template",
+	"compatibility_date": "2025-04-01",
+	"main": "./server.ts",
+	"assets": {
+		"directory": "./build/client"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "prod_d1_tutorial",
+			"database_name": "prod-d1-tutorial",
+			"database_id": "b7090ffb-37c4-4760-8418-15d2ef1c9991"
+		}
+	]
 }
