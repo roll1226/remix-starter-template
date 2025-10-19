@@ -18,7 +18,8 @@
     "@remix-run/server-runtime": "2.16.5",
     "isbot": "5.1.26",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250425.0",
@@ -54,7 +55,9 @@
     "preview": "npm run build && wrangler dev",
     "start": "wrangler dev",
     "typecheck": "tsc",
-    "typegen": "wrangler types"
+    "typegen": "wrangler types",
+    "sql:local": "npx wrangler d1 execute prod-d1-tutorial --local --file=./sql/schema.sql",
+    "sql:deploy": "npx wrangler d1 execute prod-d1-tutorial --remote --file=./sql/schema.sql"
   },
   "sideEffects": false,
   "type": "module"
