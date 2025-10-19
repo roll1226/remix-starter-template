@@ -15,13 +15,18 @@ import {
   type UpdateTodoInput,
   validateCreateTodo,
 } from "~/schemas/todo";
-import { createTodoApiClient } from "~/utils/todoApiClient";
+import {
+  createTodo as createTodoServer,
+  deleteTodo as deleteTodoServer,
+  getAllTodos,
+  updateTodo as updateTodoServer,
+} from "~/utils/todo.server";
 
-// APIからtodos一覧を取得
-export async function loader({ request }: LoaderFunctionArgs) {
+// todos一覧を取得
+export async function loader({ context }: LoaderFunctionArgs) {
   try {
-    const apiClient = createTodoApiClient(request);
-    const todos = await apiClient.getTodos();
+    const db = context.cloudflare.env.prod_d1_tutorial;
+    const todos = await getAllTodos(db);
     return json({ todos });
   } catch (error) {
     console.error("Failed to fetch todos:", error);
@@ -29,11 +34,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
-// ActionでAPI経由でCRUD操作を処理
-export async function action({ request }: ActionFunctionArgs) {
+// ActionでCRUD操作を処理（直接データベース関数を呼び出し）
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
-  const apiClient = createTodoApiClient(request);
+  const db = context.cloudflare.env.prod_d1_tutorial;
 
   try {
     switch (intent) {
@@ -53,30 +58,30 @@ export async function action({ request }: ActionFunctionArgs) {
           return json({ error: "入力データが無効です" }, { status: 400 });
         }
 
-        const createdTodo = await apiClient.createTodo(validationResult.data);
+        const createdTodo = await createTodoServer(db, validationResult.data);
         return json({ success: true, todo: createdTodo });
       }
 
       case "toggle": {
-        const todoId = parseInt(formData.get("todoId") as string);
+        const todoId = formData.get("todoId") as string;
         const isComplete = formData.get("isComplete") === "true";
 
         const updateData: UpdateTodoInput = {
           IsComplete: !isComplete,
         };
 
-        await apiClient.updateTodo(todoId, updateData);
+        await updateTodoServer(db, todoId, updateData);
         return json({ success: true });
       }
 
       case "delete": {
-        const todoId = parseInt(formData.get("todoId") as string);
-        await apiClient.deleteTodo(todoId);
+        const todoId = formData.get("todoId") as string;
+        await deleteTodoServer(db, todoId);
         return json({ success: true });
       }
 
       case "update": {
-        const todoId = parseInt(formData.get("todoId") as string);
+        const todoId = formData.get("todoId") as string;
         const title = formData.get("title") as string;
 
         if (!title?.trim()) {
@@ -87,7 +92,7 @@ export async function action({ request }: ActionFunctionArgs) {
           Title: title.trim(),
         };
 
-        await apiClient.updateTodo(todoId, updateData);
+        await updateTodoServer(db, todoId, updateData);
         return json({ success: true });
       }
 
@@ -97,9 +102,7 @@ export async function action({ request }: ActionFunctionArgs) {
   } catch (error) {
     console.error("Action failed:", error);
     const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "ネットワークエラーが発生しました";
+      error instanceof Error ? error.message : "操作に失敗しました";
     return json({ error: errorMessage }, { status: 500 });
   }
 }

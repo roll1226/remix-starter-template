@@ -56,8 +56,8 @@
     "start": "wrangler dev",
     "typecheck": "tsc",
     "typegen": "wrangler types",
-    "sql:local": "npx wrangler d1 execute prod-d1-tutorial --local --file=./sql/schema.sql",
-    "sql:deploy": "npx wrangler d1 execute prod-d1-tutorial --remote --file=./sql/schema.sql"
+    "sql:local": "wrangler d1 execute prod-d1-tutorial --local --file=./sql/schema.sql",
+    "sql:deploy": "wrangler d1 execute prod-d1-tutorial --remote --file=./sql/schema.sql"
   },
   "sideEffects": false,
   "type": "module"

@@ -1,18 +1,21 @@
+"use strict";
 import {
   ActionFunctionArgs,
   json,
   LoaderFunctionArgs,
 } from "@remix-run/cloudflare";
 import {
+  convertD1RowsToTodos,
+  convertD1RowToTodo,
   validateCreateTodo,
   validateTodoId,
   validateUpdateTodo,
-  type Todo,
+  type D1TodoRow,
 } from "~/schemas/todo";
 
 // GET リクエストのハンドラー
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const env = context.cloudflare.env;
+  const env = (context.cloudflare as any).env;
   const url = new URL(request.url);
   const pathname = url.pathname;
 
@@ -23,12 +26,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         .prepare("SELECT * FROM Todos ORDER BY TodoId")
         .run();
 
-      // レスポンスデータの型安全化
-      const validatedTodos: Todo[] = (results as any[]).map((todo) => ({
-        TodoId: todo.TodoId,
-        Title: todo.Title,
-        IsComplete: Boolean(todo.IsComplete),
-      }));
+      // D1結果を型安全に変換
+      const validatedTodos = convertD1RowsToTodos(
+        results as unknown as D1TodoRow[]
+      );
 
       return json(validatedTodos);
     }
@@ -59,15 +60,10 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
         return json({ error: "Todo not found" }, { status: 404 });
       }
 
-      // レスポンスデータの型安全化
-      const todo = results[0] as any;
-      const validatedTodo: Todo = {
-        TodoId: todo.TodoId,
-        Title: todo.Title,
-        IsComplete: Boolean(todo.IsComplete),
-      };
+      // D1結果を型安全に変換
+      const todo = convertD1RowToTodo(results[0] as unknown as D1TodoRow);
 
-      return json(validatedTodo);
+      return json(todo);
     }
 
     // Beverages（既存の処理）
@@ -89,7 +85,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 // POST, PUT, DELETE などのリクエストのハンドラー
 export async function action({ request, context }: ActionFunctionArgs) {
-  const env = context.cloudflare.env;
+  const env = (context.cloudflare as any).env;
   const method = request.method;
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -120,15 +116,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
         .bind(Title, IsComplete ? 1 : 0)
         .run();
 
-      // レスポンスデータの型安全化
-      const createdTodo = results[0] as any;
-      const validatedTodo: Todo = {
-        TodoId: createdTodo.TodoId,
-        Title: createdTodo.Title,
-        IsComplete: Boolean(createdTodo.IsComplete),
-      };
+      // D1結果を型安全に変換
+      const createdTodo = convertD1RowToTodo(
+        results[0] as unknown as D1TodoRow
+      );
 
-      return json(validatedTodo, { status: 201 });
+      return json(createdTodo, { status: 201 });
     }
 
     // Todo更新（PUT）
@@ -197,15 +190,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
         .bind(...binds)
         .run();
 
-      // レスポンスデータの型安全化
-      const updatedTodo = results[0] as any;
-      const validatedTodo: Todo = {
-        TodoId: updatedTodo.TodoId,
-        Title: updatedTodo.Title,
-        IsComplete: Boolean(updatedTodo.IsComplete),
-      };
+      // D1結果を型安全に変換
+      const updatedTodo = convertD1RowToTodo(
+        results[0] as unknown as D1TodoRow
+      );
 
-      return json(validatedTodo);
+      return json(updatedTodo);
     }
 
     // Todo物理削除（DELETE）

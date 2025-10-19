@@ -47,12 +47,29 @@ export const TodoIdParamSchema = z.object({
 });
 
 // ===============================
+// D1データベース結果型
+// ===============================
+
+// D1から返される生のTodoデータの型
+export interface D1TodoRow {
+  TodoId: number;
+  Title: string;
+  IsComplete: number; // SQLiteはboolean値を0/1で保存
+}
+
+// ===============================
 // エラーレスポンススキーマ
 // ===============================
 
 export const ErrorResponseSchema = z.object({
   error: z.string(),
-  details: z.any().optional(),
+  details: z
+    .union([
+      z.string(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .optional(),
 });
 
 export const SuccessResponseSchema = z.object({
@@ -98,6 +115,21 @@ export type TodoDetailResponse = z.infer<typeof TodoDetailResponseSchema>;
 export type TodoCreateResponse = z.infer<typeof TodoCreateResponseSchema>;
 export type TodoUpdateResponse = z.infer<typeof TodoUpdateResponseSchema>;
 export type TodoDeleteResponse = z.infer<typeof TodoDeleteResponseSchema>;
+
+// ===============================
+// D1結果変換ヘルパー関数
+// ===============================
+
+// D1の生データをTodo型に変換
+export const convertD1RowToTodo = (row: D1TodoRow): Todo => ({
+  TodoId: row.TodoId,
+  Title: row.Title,
+  IsComplete: Boolean(row.IsComplete),
+});
+
+// 複数のD1行をTodo配列に変換
+export const convertD1RowsToTodos = (rows: D1TodoRow[]): Todo[] =>
+  rows.map(convertD1RowToTodo);
 
 // ===============================
 // バリデーションヘルパー関数

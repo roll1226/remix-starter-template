@@ -1,111 +1,112 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import {
   CreateTodoInput,
+  ErrorResponse,
   Todo,
-  TodoCreateResponseSchema,
-  TodoDeleteResponseSchema,
-  TodoListResponseSchema,
-  TodoUpdateResponseSchema,
   UpdateTodoInput,
 } from "~/schemas/todo";
+import {
+  createTodo as createTodoServer,
+  deleteTodo as deleteTodoServer,
+  getAllTodos,
+  getTodoDetail,
+  updateTodo as updateTodoServer,
+} from "~/utils/todo.server";
 
-// APIクライアントクラス
+// 直接データベース操作クライアントクラス
 export class TodoApiClient {
-  private baseUrl: string;
+  private db: D1Database;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  constructor(db: D1Database) {
+    this.db = db;
   }
+
+  // エラーレスポンスの型ガード
+  private isErrorResponse = (data: unknown): data is ErrorResponse => {
+    return typeof data === "object" && data !== null && "error" in data;
+  };
 
   // Todos一覧取得
   async getTodos(): Promise<Todo[]> {
-    const response = await fetch(`${this.baseUrl}/api/todos`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch todos: ${response.status}`);
+    try {
+      const result = await getAllTodos(this.db);
+      return result;
+    } catch (error) {
+      console.error("Failed to get todos:", error);
+      throw new Error("Failed to fetch todos");
     }
+  }
 
-    const rawData = await response.json();
-    const validationResult = TodoListResponseSchema.safeParse(rawData);
+  // Todo詳細取得
+  async getTodoById(id: number): Promise<Todo> {
+    try {
+      const result = await getTodoDetail(this.db, id.toString());
 
-    if (!validationResult.success) {
-      throw new Error("Invalid API response format");
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Failed to get todo:", error);
+      throw new Error("Failed to fetch todo");
     }
-
-    return validationResult.data;
   }
 
   // Todo作成
   async createTodo(data: CreateTodoInput): Promise<Todo> {
-    const response = await fetch(`${this.baseUrl}/api/todos`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const result = await createTodoServer(this.db, data);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error((errorData as any)?.error || "Failed to create todo");
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Failed to create todo:", error);
+      throw new Error("Failed to create todo");
     }
-
-    const rawData = await response.json();
-    const validationResult = TodoCreateResponseSchema.safeParse(rawData);
-
-    if (!validationResult.success) {
-      throw new Error("Invalid API response format");
-    }
-
-    return validationResult.data;
   }
 
   // Todo更新
   async updateTodo(id: number, data: UpdateTodoInput): Promise<Todo> {
-    const response = await fetch(`${this.baseUrl}/api/todos/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const result = await updateTodoServer(this.db, id.toString(), data);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error((errorData as any)?.error || "Failed to update todo");
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Failed to update todo:", error);
+      throw new Error("Failed to update todo");
     }
-
-    const rawData = await response.json();
-    const validationResult = TodoUpdateResponseSchema.safeParse(rawData);
-
-    if (!validationResult.success) {
-      throw new Error("Invalid API response format");
-    }
-
-    return validationResult.data;
   }
 
   // Todo削除
   async deleteTodo(id: number): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/todos/${id}`, {
-      method: "DELETE",
-    });
+    try {
+      const result = await deleteTodoServer(this.db, id.toString());
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error((errorData as any)?.error || "Failed to delete todo");
-    }
-
-    const rawData = await response.json();
-    const validationResult = TodoDeleteResponseSchema.safeParse(rawData);
-
-    if (!validationResult.success) {
-      throw new Error("Invalid API response format");
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error("Failed to delete todo:", error);
+      throw new Error("Failed to delete todo");
     }
   }
 }
 
-// ヘルパー関数: URLからAPIクライアントを作成
-export const createTodoApiClient = (request: Request): TodoApiClient => {
-  const url = new URL(request.url);
-  return new TodoApiClient(url.origin);
+// ヘルパー関数: D1DatabaseからAPIクライアントを作成
+export const createTodoApiClient = (db: D1Database): TodoApiClient => {
+  return new TodoApiClient(db);
+};
+
+// レガシー: Requestから context経由でAPIクライアントを作成（後方互換性）
+export const createTodoApiClientFromContext = (context: any): TodoApiClient => {
+  const db = context.cloudflare.env.prod_d1_tutorial;
+  return new TodoApiClient(db);
 };

@@ -1,6 +1,6 @@
 import { useActionData, useNavigation } from "@remix-run/react";
 import { useState } from "react";
-import { type Todo } from "~/schemas/todo";
+import { type ErrorResponse, type Todo } from "~/schemas/todo";
 
 export function useTodoManagement() {
   const actionData = useActionData();
@@ -21,12 +21,13 @@ export function useTodoManagement() {
     setEditTitle("");
   };
 
-  const hasError =
-    actionData &&
-    typeof actionData === "object" &&
-    "error" in actionData &&
-    actionData.error;
-  const errorMessage = hasError ? (actionData as any).error : null;
+  // エラーの型安全なチェック
+  const isErrorResponse = (data: unknown): data is ErrorResponse => {
+    return typeof data === "object" && data !== null && "error" in data;
+  };
+
+  const hasError = actionData && isErrorResponse(actionData);
+  const errorMessage = hasError ? actionData.error : null;
 
   return {
     editingId,
